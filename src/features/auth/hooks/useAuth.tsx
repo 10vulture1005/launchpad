@@ -1,6 +1,9 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { api } from '@/lib/api-client';
 import { LS_TOKEN_KEY, LS_EMAIL_KEY } from '@/shared/constants';
+import { isLocalMode } from '@/app/config/runtime';
+
+const LOCAL_MODE_USER = 'Local mode';
 
 interface AuthUser {
   email: string;
@@ -24,7 +27,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => {
     const token = localStorage.getItem(TOKEN_KEY);
     const email = localStorage.getItem(EMAIL_KEY);
-    return token && email ? { email } : null;
+    if (token && email) return { email };
+    // Local launchpad has no accounts: treat the user as signed in instead of redirecting to /login.
+    return isLocalMode() ? { email: LOCAL_MODE_USER } : null;
   });
 
   const loading = false;
