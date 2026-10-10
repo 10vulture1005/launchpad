@@ -71,9 +71,10 @@ describe('DeployWizardPage Toast Notifications', () => {
       </MemoryRouter>,
     );
 
-    if (mockOnReady) {
+    const onReady = mockOnReady;
+    if (onReady) {
       await act(async () => {
-        mockOnReady({ suffix: 'test-dep' });
+        onReady({ suffix: 'test-dep' });
       });
     }
 
@@ -91,9 +92,10 @@ describe('DeployWizardPage Toast Notifications', () => {
       </MemoryRouter>,
     );
 
-    if (mockOnFailed) {
+    const onFailed = mockOnFailed;
+    if (onFailed) {
       await act(async () => {
-        mockOnFailed('Build crashed');
+        onFailed('Build crashed');
       });
     }
 
