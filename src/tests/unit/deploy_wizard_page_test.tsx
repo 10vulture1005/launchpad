@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, waitFor } from '@testing-library/react';
+import { render, waitFor, act } from '@testing-library/react';
 import DeployWizardPage from '@/features/deployments/components/DeployWizard/index';
 import { MemoryRouter } from 'react-router-dom';
 import { toast } from 'sonner';
+import JSZip from 'jszip';
 
 // Mock dependencies
 vi.mock('@/lib/api-client', () => ({
@@ -38,6 +39,22 @@ vi.mock('sonner', () => ({
   },
 }));
 
+/**
+ * The wizard parses the uploaded file with JSZip on mount. Handing it an empty
+ * `File` makes that parse reject, and the component's catch block then logs via
+ * console.error from a promise that settles *after* the test body returns.
+ * Vitest tries to forward that late log over an RPC channel that is already
+ * closing, which surfaces as:
+ *   EnvironmentTeardownError: Closing rpc while "onUserConsoleLog" was pending
+ * Build a real (tiny) zip so the parse resolves and nothing logs late.
+ */
+async function makeZipFile(): Promise<File> {
+  const zip = new JSZip();
+  zip.file('index.js', 'module.exports = () => {};');
+  const blob = await zip.generateAsync({ type: 'blob' });
+  return new File([blob], 'test.zip', { type: 'application/zip' });
+}
+
 describe('DeployWizardPage Toast Notifications', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -46,16 +63,19 @@ describe('DeployWizardPage Toast Notifications', () => {
   });
 
   it('calls toast.success on successful deploy', async () => {
+    const file = await makeZipFile();
+
     render(
-      <MemoryRouter
-        initialEntries={[{ state: { file: new File([''], 'test.zip'), plan: 'Free' } }]}
-      >
+      <MemoryRouter initialEntries={[{ state: { file, plan: 'Free' } }]}>
         <DeployWizardPage />
       </MemoryRouter>,
     );
 
-    if (mockOnReady) {
-      mockOnReady({ suffix: 'test-dep' });
+    const onReady = mockOnReady;
+    if (onReady) {
+      await act(async () => {
+        onReady({ suffix: 'test-dep' });
+      });
     }
 
     await waitFor(() => {
@@ -64,16 +84,19 @@ describe('DeployWizardPage Toast Notifications', () => {
   });
 
   it('calls toast.error on failed deploy', async () => {
+    const file = await makeZipFile();
+
     render(
-      <MemoryRouter
-        initialEntries={[{ state: { file: new File([''], 'test.zip'), plan: 'Free' } }]}
-      >
+      <MemoryRouter initialEntries={[{ state: { file, plan: 'Free' } }]}>
         <DeployWizardPage />
       </MemoryRouter>,
     );
 
-    if (mockOnFailed) {
-      mockOnFailed('Build crashed');
+    const onFailed = mockOnFailed;
+    if (onFailed) {
+      await act(async () => {
+        onFailed('Build crashed');
+      });
     }
 
     await waitFor(() => {

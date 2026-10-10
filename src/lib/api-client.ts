@@ -18,6 +18,7 @@ import type { Deployment, MetaCallJSON, Plans } from '@/shared/types';
 
 import { LS_TOKEN_KEY, LS_FAAS_URL_KEY } from '@/shared/constants';
 import { env } from '@/app/config/env';
+import { getRuntimeConfig } from '@/app/config/runtime';
 
 const TOKEN_KEY = LS_TOKEN_KEY;
 
@@ -53,6 +54,8 @@ async function authFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
 }
 
 export function getBaseUrl(): string {
+  const runtimeUrl = getRuntimeConfig().faasUrl;
+  if (runtimeUrl) return runtimeUrl;
   if (typeof window !== 'undefined') {
     const customUrl = localStorage.getItem(LS_FAAS_URL_KEY);
     if (customUrl) return customUrl;
@@ -81,7 +84,12 @@ export function getAuthUrl(): string {
 export const BASE_URL = getBaseUrl();
 
 function getToken(): string {
-  return localStorage.getItem(TOKEN_KEY) ?? (import.meta.env.VITE_FAAS_TOKEN as string) ?? '';
+  return (
+    localStorage.getItem(TOKEN_KEY) ??
+    getRuntimeConfig().token ??
+    (import.meta.env.VITE_FAAS_TOKEN as string) ??
+    ''
+  );
 }
 
 function getProtocol(): API {
