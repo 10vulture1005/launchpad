@@ -161,6 +161,7 @@ export default function DeployWizardPage() {
   // Parse Zip
   useEffect(() => {
     if (!file) return;
+    let active = true;
 
     // Guard against excessively large files that could freeze the browser
     const MAX_ZIP_BYTES = 100 * 1024 * 1024; // 100 MB
@@ -176,6 +177,7 @@ export default function DeployWizardPage() {
       try {
         const jszip = new JSZip();
         const zip = await jszip.loadAsync(file!);
+        if (!active) return;
         const paths = Object.keys(zip.files);
 
         const root = buildTree(paths);
@@ -188,13 +190,16 @@ export default function DeployWizardPage() {
         });
         setSelectedPaths(allFiles);
       } catch (error) {
-        console.error('Failed to parse zip', error);
+        if (active) console.error('Failed to parse zip', error);
       } finally {
-        setLoadingZip(false);
+        if (active) setLoadingZip(false);
       }
     }
 
     processZip();
+    return () => {
+      active = false;
+    };
   }, [file, navigate]);
 
   // Helpers for Tree Toggle
